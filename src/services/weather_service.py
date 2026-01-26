@@ -7,6 +7,18 @@ from zoneinfo import ZoneInfo
 
 from src.models import CityWeather, DayForecast, WeatherCondition, WeatherForecast
 
+NZ_TZ = ZoneInfo("Pacific/Auckland")
+
+
+def _get_seeded_random(city: str, date_str: str | None = None) -> random.Random:
+    """Get a seeded Random instance for consistent weather within each hour."""
+    now = datetime.now(tz=NZ_TZ)
+    hour_key = now.strftime("%Y-%m-%d-%H")
+    if date_str:
+        hour_key = date_str
+    seed = hash(f"{city.lower()}-{hour_key}")
+    return random.Random(seed)  # noqa: S311
+
 CONDITIONS: dict[str, WeatherCondition] = {
     "sunny": WeatherCondition(code="sunny", name="Sunny", icon="☀️"),
     "partly_cloudy": WeatherCondition(code="partly_cloudy", name="Partly Cloudy", icon="⛅"),
@@ -47,11 +59,11 @@ class WeatherService:
     def _celsius_to_fahrenheit(self, celsius: float) -> float:
         return round(celsius * 9 / 5 + 32, 1)
 
-    def _generate_temperature(self, city_data: CityData) -> float:
-        return round(random.uniform(city_data.temp_min, city_data.temp_max), 1)  # noqa: S311
+    def _generate_temperature(self, city_data: CityData, rng: random.Random) -> float:
+        return round(rng.uniform(city_data.temp_min, city_data.temp_max), 1)
 
-    def _get_random_condition(self, city_data: CityData) -> WeatherCondition:
-        condition_code = random.choice(city_data.typical_conditions)  # noqa: S311
+    def _get_random_condition(self, city_data: CityData, rng: random.Random) -> WeatherCondition:
+        condition_code = rng.choice(city_data.typical_conditions)
         return CONDITIONS[condition_code]
 
     async def get_current_weather(self, city: str) -> CityWeather | None:
@@ -60,10 +72,11 @@ class WeatherService:
         if city_data is None:
             return None
 
-        temp_c = self._generate_temperature(city_data)
-        condition = self._get_random_condition(city_data)
-        humidity = random.randint(40, 85)  # noqa: S311
-        wind_speed = round(random.uniform(5, 35), 1)  # noqa: S311
+        rng = _get_seeded_random(city)
+        temp_c = self._generate_temperature(city_data, rng)
+        condition = self._get_random_condition(city_data, rng)
+        humidity = rng.randint(40, 85)
+        wind_speed = round(rng.uniform(5, 35), 1)
         feels_like = temp_c - (wind_speed / 10) + (humidity / 50)
 
         return CityWeather(
@@ -83,16 +96,17 @@ class WeatherService:
         if city_data is None:
             return None
 
-        nz_tz = ZoneInfo("Pacific/Auckland")
-        today = datetime.now(tz=nz_tz)
+        today = datetime.now(tz=NZ_TZ)
         forecasts: list[DayForecast] = []
 
         for i in range(days):
             forecast_date = today + timedelta(days=i + 1)
-            daily_high = round(random.uniform(city_data.temp_max - 3, city_data.temp_max + 3), 1)  # noqa: S311
-            daily_low = round(random.uniform(city_data.temp_min - 2, city_data.temp_min + 2), 1)  # noqa: S311
-            condition = self._get_random_condition(city_data)
-            rain_chance = 10 if condition.code == "sunny" else random.randint(20, 80)  # noqa: S311
+            date_str = forecast_date.strftime("%Y-%m-%d")
+            rng = _get_seeded_random(city, date_str)
+            daily_high = round(rng.uniform(city_data.temp_max - 3, city_data.temp_max + 3), 1)
+            daily_low = round(rng.uniform(city_data.temp_min - 2, city_data.temp_min + 2), 1)
+            condition = self._get_random_condition(city_data, rng)
+            rain_chance = 10 if condition.code == "sunny" else rng.randint(20, 80)
 
             forecasts.append(
                 DayForecast(

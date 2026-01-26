@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataTorque Weather</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            opacity: 0.8;
+            font-size: 1.1rem;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .weather-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .weather-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .city-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+
+        .country {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .condition-icon {
+            font-size: 3rem;
+        }
+
+        .temperature {
+            font-size: 3.5rem;
+            font-weight: 300;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .temperature span {
+            font-size: 1.5rem;
+            vertical-align: super;
+        }
+
+        .feels-like {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .condition-name {
+            font-size: 1.1rem;
+            color: #444;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .detail-icon {
+            font-size: 1.2rem;
+        }
+
+        .detail-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .detail-value {
+            font-size: 1rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            padding: 2rem;
+        }
+
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn {
+            display: block;
+            margin: 2rem auto 0;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: white;
+        }
+
+        footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 2rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DataTorque Weather</h1>
+            <p>Current conditions across NZ & Australia</p>
+        </header>
+
+        <div id="error-container"></div>
+        <div id="weather-grid" class="weather-grid">
+            <div class="loading">Loading weather data...</div>
+        </div>
+
+        <button class="refresh-btn" onclick="loadWeather()">Refresh</button>
+
+        <footer>
+            <p>DataTorque Internal Weather Service</p>
+        </footer>
+    </div>
+
+    <script>
+        const cities = ['auckland', 'wellington', 'christchurch', 'sydney', 'melbourne', 'brisbane'];
+
+        async function fetchWeather(city) {
+            const response = await fetch(`/api/v1/weather/${city}`);
+            if (!response.ok) throw new Error(`Failed to fetch ${city}`);
+            return response.json();
+        }
+
+        function createWeatherCard(data) {
+            return `
+                <div class="weather-card">
+                    <div class="card-header">
+                        <div>
+                            <div class="city-name">${data.city}</div>
+                            <div class="country">${data.country === 'NZ' ? 'New Zealand' : 'Australia'}</div>
+                        </div>
+                        <div class="condition-icon">${data.condition.icon}</div>
+                    </div>
+                    <div class="temperature">${Math.round(data.temperature_celsius)}<span>°C</span></div>
+                    <div class="feels-like">Feels like ${Math.round(data.feels_like_celsius)}°C</div>
+                    <div class="condition-name">${data.condition.name}</div>
+                    <div class="details">
+                        <div class="detail-item">
+                            <span class="detail-icon">💧</span>
+                            <div>
+                                <div class="detail-label">Humidity</div>
+                                <div class="detail-value">${data.humidity_percent}%</div>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">💨</span>
+                            <div>
+                                <div class="detail-label">Wind</div>
+                                <div class="detail-value">${data.wind_speed_kmh} km/h</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadWeather() {
+            const grid = document.getElementById('weather-grid');
+            const errorContainer = document.getElementById('error-container');
+            
+            grid.innerHTML = '<div class="loading">Loading weather data...</div>';
+            errorContainer.innerHTML = '';
+
+            try {
+                const results = await Promise.all(cities.map(fetchWeather));
+                grid.innerHTML = results.map(createWeatherCard).join('');
+            } catch (error) {
+                errorContainer.innerHTML = `<div class="error">Failed to load weather data. Please try again.</div>`;
+                grid.innerHTML = '';
+                console.error(error);
+            }
+        }
+
+        // Load weather on page load
+        loadWeather();
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadWeather, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

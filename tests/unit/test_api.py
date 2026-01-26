@@ -9,8 +9,16 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-def test_root_endpoint(client: TestClient) -> None:
+def test_root_endpoint_returns_html(client: TestClient) -> None:
     response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "DataTorque Weather" in response.text
+
+
+def test_api_info_endpoint(client: TestClient) -> None:
+    response = client.get("/api")
 
     assert response.status_code == 200
     data = response.json()

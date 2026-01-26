@@ -3,11 +3,16 @@
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.routes import health, weather
+
+BASE_DIR = Path(__file__).resolve().parent
 
 
 @asynccontextmanager
@@ -37,9 +42,19 @@ app.include_router(health.router, tags=["Health"])
 app.include_router(weather.router, prefix="/api/v1", tags=["Weather"])
 
 
-@app.get("/")
-async def root() -> dict[str, str]:
-    """Root endpoint with API information."""
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def root() -> HTMLResponse:
+    """Serve the weather dashboard UI."""
+    template_path = BASE_DIR / "templates" / "index.html"
+    return HTMLResponse(content=template_path.read_text())
+
+
+@app.get("/api")
+async def api_info() -> dict[str, str]:
+    """API information endpoint."""
     return {
         "service": "DataTorque Weather API",
         "version": "0.1.0",
