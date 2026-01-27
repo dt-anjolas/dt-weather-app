@@ -5,7 +5,7 @@ max-instances: 10
 min-instances: 0
 timeout: 300
 
-owner: anjolas@datatorque.com
+owner: anjola.sigbeku@datatorque.com
 team: engineering
 path-pattern: /weather/*
 priority: 300
