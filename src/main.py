@@ -28,6 +28,7 @@ app = FastAPI(
     description="A simple weather API for internal use. Provides weather data for cities.",
     version="0.1.0",
     lifespan=lifespan,
+    root_path="/weather",
 )
 
 app.add_middleware(

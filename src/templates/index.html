@@ -201,7 +201,7 @@
         const cities = ['auckland', 'wellington', 'christchurch', 'sydney', 'melbourne', 'brisbane'];
 
         async function fetchWeather(city) {
-            const response = await fetch(`/api/v1/weather/${city}`);
+            const response = await fetch(`/weather/api/v1/weather/${city}`);
             if (!response.ok) throw new Error(`Failed to fetch ${city}`);
             return response.json();
         }
